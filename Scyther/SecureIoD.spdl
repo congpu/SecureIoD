@@ -1,0 +1,75 @@
+/*
+ * SecureIoD protocol
+ */
+
+hashfunction hash;
+
+usertype Challenge;
+usertype Response;
+usertype SessionKey;
+
+// Protocol description
+
+protocol SecureIoD(D,Z)
+{
+	role D
+	{
+		fresh ni, ni1: Nonce;
+		var ns: Nonce;
+		fresh re1: Response;
+		
+		macro mac1 = hash( {D,Z,ni}k(D,Z), ni);
+		macro mac34 = hash( {D,Z,ns,ni1}k(D,Z), {D,Z,ns,ni1,re1}k(D,Z), ni1, re1);
+		var mac2: Ticket;
+
+		send_1 (D,Z, {D,Z,ni}k(D,Z), mac1 );
+
+		recv_2 (Z,D, {D,Z,ni,ns}k(D,Z), mac2 );
+		match(mac2, hash( {D,Z,ni,ns}k(D,Z), ni, ns) );
+
+		claim(D, Running, Z, ni, ns, ni1, re1 );
+		send_3 (D,Z, {D,Z,ns,ni1}k(D,Z), {D,Z,ns,ni1,re1}k(D,Z), mac34 );
+
+		claim(D, Secret, ni);
+		claim(D, Secret, ns);
+		claim(D, Secret, ni1);
+		claim(D, Secret, re1);
+		claim(D, Alive);
+		claim(D, Weakagree, Z);
+		claim(D, Commit, Z, ni, ns);
+		claim(D, Niagree);
+		claim(D, Nisynch);
+		
+	}
+	
+	role Z
+	{
+		fresh ns: Nonce;
+		
+		var ni, ni1: Nonce;
+		var re1: Response;
+
+		macro mac2 = hash( {D,Z,ni,ns}k(D,Z), ni, ns);
+		var mac1: Ticket;
+		var mac34: Ticket;
+
+		recv_1 (D,Z, {D,Z,ni}k(D,Z), mac1 );
+		match(mac1, hash( {D,Z,ni}k(D,Z), ni) );
+
+		claim(Z, Running, D, ni, ns);
+		send_2 (Z,D, {D,Z,ni,ns}k(D,Z), mac2 );
+
+		recv_3 (D,Z, {D,Z,ns,ni1}k(D,Z), {D,Z,ns,ni1,re1}k(D,Z), mac34 );
+		match(mac34, hash( {D,Z,ns,ni1}k(D,Z), {D,Z,ns,ni1,re1}k(D,Z), ni1, re1) );
+
+		claim(Z, Secret, ni);
+		claim(Z, Secret, ns);
+		claim(Z, Secret, ni1);
+		claim(Z, Secret, re1);
+		claim(Z, Alive);
+		claim(Z, Weakagree, D);
+		claim(Z, Commit, D, ni, ns, ni1, re1 );
+		claim(Z, Niagree);
+		claim(Z, Nisynch);
+	}
+}
